@@ -11,41 +11,17 @@ from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
-import mysql.connector
-
-def get_db_connection():
-    return mysql.connector.connect(
-        host=os.getenv('DB_HOST', 'localhost'),
-        user=os.getenv('DB_USER', 'root'),
-        password=os.getenv('DB_PASSWORD', ''),
-        database=os.getenv('DB_NAME', 'attendance_db')
-    )
-
-def save_attendance(name, location):
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-
-    # Look up the student's details
-    cursor.execute("SELECT gender, section FROM students WHERE name = %s", (name,))
-    info = cursor.fetchone() or {'gender': 'Unknown', 'section': 'Unknown'}
-
-    now = datetime.now()
-    cursor.execute(
-        """INSERT INTO attendance (name, gender, section, date, time, location)
-           VALUES (%s, %s, %s, %s, %s, %s)""",
-        (name, info['gender'], info['section'],
-         now.date(), now.strftime('%I:%M:%S %p'), location)
-    )
-    conn.commit()
-    cursor.close()
-    conn.close()
 # ==================== CONFIGURATION ====================
 class Config:
+
+    MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
+    MONGO_DB_NAME = os.getenv('MONGO_DB_NAME', 'attendance_db')
     
     # Directories
     FACES_DB = 'registered_faces/'
     ATTENDANCE_FILE = 'attendance.csv'
     CAPTURES_FOLDER = 'captured_faces/'
+
     
     # DeepFace Settings
     MODEL_NAME = os.getenv('MODEL_NAME', 'Facenet')  # Options: VGG-Face, Facenet, OpenFace, DeepFace
@@ -65,6 +41,20 @@ class Config:
     # Voice Announcements
     VOICE_ENABLED = os.getenv('VOICE_ENABLED', 'True').lower() == 'true'
     VOICE_RATE = int(os.getenv('VOICE_RATE', 150))  # Speech rate
+from pymongo import MongoClient
+
+client = MongoClient(Config.MONGO_URI, serverSelectionTimeoutMS=5000)
+attendance_col = client[Config.MONGO_DB_NAME]["attendance"]
+
+def save_attendance(name, location):
+    try:
+        attendance_col.insert_one({
+            "name": name,
+            "location": location,
+            "timestamp": datetime.now()
+        })
+    except Exception as e:
+        print(f"MongoDB save failed: {e}")
 
 # Create necessary folders
 os.makedirs(Config.FACES_DB, exist_ok=True)
@@ -300,12 +290,7 @@ class AttendanceManager:
         # Write to CSV
         with open(Config.ATTENDANCE_FILE, 'a') as f:
             f.write(f"{name},{date_str},{time_str},{Config.LOCATION}\n")
-
-        # Save to MySQL (XAMPP)
-        try:
-            save_attendance(name, location)
-        except Exception as e:
-            print(f"Database error: {e}")
+            save_attendance(name, Config.LOCATION)
 
         # Mark as present
         self.marked_today.add(name)

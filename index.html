@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmartAttend AI</title>
+<style>
+:root{
+  --bg:#f2f3f5;--card:#fff;--ink:#1b1f27;--mute:#667085;--line:#dcdfe5;--field:#fff;
+  --accent:#1f4fd8;--ok:#1a8f4c;--danger:#c8273d;--r:8px;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#101319;--card:#181c24;--ink:#e9ecf2;--mute:#8f98a9;--line:#2a303b;--field:#12151b;
+  --accent:#6b93ff;--ok:#3ec27a;--danger:#ff6b7f;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",Inter,system-ui,-apple-system,sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+
+/* Header */
+header{background:var(--card);border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;height:72px}
+.brand h1{margin:0;font-size:1.2rem;font-weight:700;line-height:1.2}
+.brand small{display:block;color:var(--mute);font-size:.82rem}
+.clock{text-align:right;line-height:1.2}
+.clock b{display:block;font-size:1.35rem;font-weight:700;font-variant-numeric:tabular-nums}
+.clock span{color:var(--mute);font-size:.8rem}
+@media(max-width:560px){.brand small{display:none}.clock b{font-size:1.1rem}}
+
+/* Tabs */
+nav{background:var(--card);border-bottom:1px solid var(--line)}
+.tabs{display:flex;gap:28px;overflow-x:auto}
+.tab{font:inherit;font-weight:600;font-size:.92rem;color:var(--mute);background:none;border:0;border-bottom:3px solid transparent;padding:14px 0 11px;cursor:pointer;white-space:nowrap}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected=true]{color:var(--accent);border-bottom-color:var(--accent)}
+.tab:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Layout */
+main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:24px;align-items:stretch;padding:24px 0 40px}
+@media(max-width:860px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r)}
+
+/* Camera */
+.cam{position:relative;background:#000;border-radius:var(--r) var(--r) 0 0;overflow:hidden;aspect-ratio:4/3}
+.cam video,.cam canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.bar{padding:10px 16px;font-size:.9rem;font-weight:600;border-top:1px solid var(--line);border-radius:0 0 var(--r) var(--r);color:var(--mute)}
+.bar.ok{background:var(--ok);color:#fff;border-color:var(--ok)}
+.camcard{overflow:hidden}
+main>section:first-child{display:flex;flex-direction:column;gap:12px}
+#msg{font-size:.9rem;font-weight:600}
+#msg:empty{display:none}
+.summary{display:grid;grid-template-columns:1fr 1fr}
+.summary div{padding:12px 16px}
+.summary div+div{border-left:1px solid var(--line)}
+.summary b{display:block;font-size:1.4rem;font-weight:700;line-height:1.15}
+.summary span{color:var(--mute);font-size:.85rem}
+
+/* Panels */
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel-card{padding:24px}
+.activity{flex:1;display:flex;flex-direction:column;padding:20px 24px;min-height:0}
+.activity-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.activity-head span{color:var(--mute);font-size:.9rem}
+.activity-head b{color:var(--ink);font-size:1.1rem}
+.activity .scroll{flex:1 1 0;min-height:150px;max-height:none}
+@media(max-width:860px){.activity .scroll{flex:none;max-height:280px}}
+.panel[hidden]{display:none}
+h2{margin:0;font-size:1.1rem;font-weight:700}
+p.hint{margin:4px 0 0;color:var(--mute);font-size:.9rem}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}
+.form .full{grid-column:1/-1}
+@media(max-width:480px){.form{grid-template-columns:1fr}}
+label{display:block;font-size:.85rem;font-weight:600;margin-bottom:5px}
+input,select{width:100%;height:40px;padding:0 12px;border:1px solid var(--line);border-radius:6px;background:var(--field);color:var(--ink);font:inherit}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+input::placeholder{color:var(--mute);opacity:.7}
+
+.btn{font:inherit;font-weight:600;height:40px;padding:0 18px;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:#fff;cursor:pointer}
+.btn:hover{filter:brightness(1.1)}
+.btn.block{width:100%;margin-top:20px}
+.btn.danger{background:none;color:var(--danger);border-color:var(--line)}
+.btn.danger:hover{border-color:var(--danger);filter:none}
+.btn:disabled{opacity:.5;cursor:wait}
+.toolbar{display:flex;gap:10px;margin-top:20px}
+.pick-row{display:flex;gap:10px;align-items:flex-end;margin-top:20px}
+.pick-row>div{flex:1;min-width:0}
+.countline{margin:18px 0 0;color:var(--mute);font-size:.9rem}
+.countline b{color:var(--ink);font-size:1.1rem}
+
+/* Tables */
+.scroll{max-height:280px;overflow:auto;margin-top:10px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:10px 8px 10px 0;border-bottom:1px solid var(--line);font-size:.9rem}
+th{color:var(--mute);font-weight:600;font-size:.82rem;position:sticky;top:0;background:var(--card)}
+tr:last-child td{border-bottom:0}
+.empty{color:var(--mute);padding:24px 0;font-size:.9rem}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="brand"><h1>SmartAttend AI</h1><small>Philippine College of Technology, Entrance Hallway</small></div>
+  <div class="clock"><b id="clock">--:--</b><span id="date"></span></div>
+</div></header>
+
+<nav><div class="wrap"><div class="tabs" role="tablist">
+  <button class="tab" role="tab" data-p="enroll" aria-selected="true">Take Images</button>
+  <button class="tab" role="tab" data-p="train" aria-selected="false">Train Images</button>
+  <button class="tab" role="tab" data-p="auto" aria-selected="false">Automatic Attendance</button>
+  <button class="tab" role="tab" data-p="manual" aria-selected="false">Manually Fill Attendance</button>
+  <button class="tab" role="tab" data-p="list" aria-selected="false">Check Registered Students</button>
+</div></div></nav>
+
+<div class="wrap">
+<main>
+<section>
+  <div class="card camcard">
+    <div class="cam"><video id="v" autoplay muted playsinline></video><canvas id="o"></canvas></div>
+    <div class="bar" id="bar">Starting camera…</div>
+  </div>
+  <div id="msg" role="status" aria-live="polite"></div>
+  <div class="card summary">
+    <div><b id="statEnrolled">0</b><span>Students enrolled</span></div>
+    <div><b id="statPresent">0</b><span>Present today</span></div>
+  </div>
+</section>
+
+<section class="side"><div class="card panel-card">
+  <div class="panel" id="enroll">
+    <h2>Enroll a student</h2><p class="hint">Fill in the details, face the camera, then take images.</p>
+    <div class="form">
+      <div><label for="sid">Student ID</label><input id="sid" placeholder="e.g. 1703210"></div>
+      <div><label for="sec">Section</label><input id="sec" placeholder="e.g. BSIT 3-A"></div>
+      <div class="full"><label for="nm">Full name</label><input id="nm" placeholder="e.g. Kenneth Crismas"></div>
+    </div>
+    <button class="btn block" id="snap">Take 5 images and save</button>
+  </div>
+
+  <div class="panel" id="train" hidden>
+    <h2>Train images</h2><p class="hint">Run this after enrolling new students so the system learns their faces.</p>
+    <button class="btn block" id="trainBtn">Train now</button>
+  </div>
+
+  <div class="panel" id="auto" hidden>
+    <h2>Automatic attendance</h2><p class="hint">Students look at the camera. Each recognised face is marked present once per day.</p>
+    <div class="toolbar"><button class="btn" id="autoBtn">Start scanning</button><button class="btn danger" id="resetBtn">Reset today</button></div>
+  </div>
+
+  <div class="panel" id="manual" hidden>
+    <h2>Manually fill attendance</h2><p class="hint">For students whose face was not recognised.</p>
+    <div class="pick-row">
+      <div><label for="pick">Student</label><select id="pick"></select></div>
+      <button id="markBtn" class="btn">Mark present</button>
+    </div>
+  </div>
+
+  <div class="panel" id="list" hidden>
+    <h2>Registered students</h2><p class="hint" id="total"></p>
+    <div class="scroll" id="reg"></div>
+  </div>
+</div>
+  <div class="card activity">
+    <div class="activity-head"><h2>Today's attendance</h2><span><b id="cnt">0</b> present</span></div>
+    <div class="scroll" id="today"></div>
+  </div>
+</section>
+</main>
+</div>
+
+<script>
+const $=id=>document.getElementById(id), v=$("v"), o=$("o"), bar=$("bar");
+const say=(t,bad)=>{$("msg").textContent=t;$("msg").style.color=bad?"var(--danger)":"var(--ink)"};
+const api=async(url,body)=>{
+  const r=await fetch(url,body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{});
+  const t=await r.text(); let j;
+  try{j=JSON.parse(t)}catch{throw new Error(`Server error ${r.status}. Check the terminal running app.py.`)}
+  if(!r.ok) throw new Error(j.error||"Something went wrong."); return j;
+};
+const frame=()=>{const c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;c.getContext("2d").drawImage(v,0,0);return c.toDataURL("image/jpeg",.85)};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const table=(heads,rows,empty="Nothing here yet.")=>rows.length?`<table><tr>${heads.map(h=>`<th>${h}</th>`).join("")}</tr>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</table>`:`<div class="empty">${empty}</div>`;
+
+// Clock
+function tick(){const d=new Date();$("clock").textContent=d.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
+  $("date").textContent=d.toLocaleDateString([],{weekday:"long",month:"long",day:"numeric"})}
+tick();setInterval(tick,1000);
+
+// Stats
+async function refreshStats(){
+  try{const [s,a]=await Promise.all([api("/api/students"),api("/api/attendance")]);
+    $("statEnrolled").textContent=s.length;renderToday(a);}catch(e){}
+}
+function renderToday(rows){
+  $("cnt").textContent=rows.length;$("statPresent").textContent=rows.length;
+  $("today").innerHTML=table(["Time","Name","Section"],rows.map(r=>[r.time,r.name,r.section]),"No one is marked present yet.");
+}
+refreshStats();
+
+navigator.mediaDevices.getUserMedia({video:{width:640,height:480}}).then(s=>{v.srcObject=s;bar.textContent="Camera ready"})
+  .catch(()=>{bar.textContent="Camera blocked. Allow camera access in your browser and reload.";});
+
+// Tabs
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t===b));
+  document.querySelectorAll(".panel").forEach(p=>p.hidden=p.id!==b.dataset.p);
+  stopScan(); say(""); if(b.dataset.p==="manual"||b.dataset.p==="list")loadStudents(); if(b.dataset.p==="auto")loadToday();
+});
+
+// Enroll
+$("snap").onclick=async()=>{
+  const id=$("sid").value.trim(),name=$("nm").value.trim(),section=$("sec").value.trim();
+  if(!id||!name||!section) return say("Enter the student ID, name and section first.",1);
+  if(!v.videoWidth) return say("Camera is not ready yet.",1);
+  $("snap").disabled=true; const images=[];
+  for(let i=1;i<=5;i++){bar.textContent=`Capturing image ${i} of 5…`;images.push(frame());await new Promise(r=>setTimeout(r,500));}
+  try{await api("/api/enroll",{id,name,section,images});say(`Saved ${name}. Now go to Train Images.`);
+    ["sid","nm","sec"].forEach(k=>$(k).value="");bar.textContent="Camera ready";refreshStats();}
+  catch(e){say(e.message,1)} $("snap").disabled=false;
+};
+
+// Train
+$("trainBtn").onclick=async()=>{
+  $("trainBtn").disabled=true;say("Training… this can take a minute.");
+  try{await api("/api/train",{});say("Training finished. You can start attendance.")}catch(e){say(e.message,1)}
+  $("trainBtn").disabled=false;
+};
+
+// Face indicator: finds faces ~3 times a second, on every tab
+let faces=[],label=null,labelAt=0,scanning=false,timer=null,busy=false,detBusy=false;
+function small(){const c=document.createElement("canvas");c.width=320;c.height=Math.round(v.videoHeight*320/v.videoWidth);
+  c.getContext("2d").drawImage(v,0,0,c.width,c.height);return c.toDataURL("image/jpeg",.6)}
+function draw(){
+  o.width=v.videoWidth;o.height=v.videoHeight;const g=o.getContext("2d");g.clearRect(0,0,o.width,o.height);
+  const fresh=label&&Date.now()-labelAt<4000&&scanning;
+  faces.forEach(([x,y,w,h],i)=>{
+    const known=fresh&&label.found&&i===0, unk=fresh&&!label.found&&i===0;
+    const col=known?"#1a8f4c":unk?"#c8273d":"#f2b01e";
+    const t=known?`${label.student.id||""} ${label.student.name}`.trim():unk?"Unknown":"Face detected";
+    g.strokeStyle=col;g.lineWidth=3;g.strokeRect(x,y,w,h);
+    g.font="600 20px 'Segoe UI',sans-serif";const ty=Math.max(0,y-28);
+    g.fillStyle=col;g.fillRect(x-1.5,ty,g.measureText(t).width+16,28);
+    g.fillStyle=col==="#f2b01e"?"#1b1f27":"#fff";g.fillText(t,x+7,ty+20);
+  });
+}
+setInterval(async()=>{
+  if(detBusy||!v.videoWidth) return; detBusy=true;
+  try{const r=await api("/api/detect",{image:small()});const k=v.videoWidth/r.size[0];
+    faces=r.boxes.map(b=>b.map(n=>n*k));draw();}catch(e){}
+  detBusy=false;
+},350);
+
+// Auto attendance
+function stopScan(){scanning=false;clearInterval(timer);timer=null;label=null;$("autoBtn").textContent="Start scanning";bar.className="bar";bar.textContent="Camera ready";}
+$("autoBtn").onclick=()=>{
+  if(timer) return stopScan();
+  scanning=true;$("autoBtn").textContent="Stop scanning";bar.textContent="Scanning…";
+  timer=setInterval(async()=>{
+    if(busy||!v.videoWidth||!faces.length) return; busy=true;
+    try{
+      const r=await api("/api/recognize",{image:frame()});label=r;labelAt=Date.now();draw();
+      if(r.found){bar.className="bar ok";bar.textContent=r.new?`${r.student.name} marked present`:`${r.student.name} already marked`;if(r.new)loadToday();}
+      else{bar.className="bar";bar.textContent=r.face?"Face not recognised":"No face in view";}
+    }catch(e){say(e.message,1)} busy=false;
+  },1500);
+};
+$("resetBtn").onclick=async()=>{if(confirm("Clear today's attendance?")){await api("/api/reset",{});loadToday();}};
+async function loadToday(){
+  renderToday(await api("/api/attendance"));
+}
+
+// Manual + registered
+async function loadStudents(){
+  const s=await api("/api/students");$("statEnrolled").textContent=s.length;
+  $("pick").innerHTML=s.map(x=>`<option value="${esc(x.id)}">${esc(x.name)} (${esc(x.section)})</option>`).join("")||`<option value="">No students enrolled</option>`;
+  $("total").textContent=`${s.length} student${s.length===1?"":"s"} enrolled`;
+  $("reg").innerHTML=table(["ID","Name","Section"],s.map(x=>[x.id,x.name,x.section]),"No students enrolled yet. Use Take Images to add one.");
+}
+$("markBtn").onclick=async()=>{
+  if(!$("pick").value) return say("Enroll a student first.",1);
+  try{const r=await api("/api/manual",{id:$("pick").value,image:v.videoWidth?frame():null});say(r.new?"Marked present.":"Already marked present today.");refreshStats()}catch(e){say(e.message,1)}
+};
+</script>
+</body>
+</html>

@@ -112,6 +112,8 @@ CONFIDENCE_THRESHOLD=60      # 0-100, higher = stricter matching
 RECOGNITION_COOLDOWN=2       # Seconds between recognitions
 ```
 
+Attendance is currently stored in `attendance.csv`; this project does not use a PHP or MySQL database connection.
+
 ## Usage
 
 ### Start the System
