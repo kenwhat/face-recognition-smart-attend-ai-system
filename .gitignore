@@ -1,4 +1,4 @@
-# Virtual Environment
+# Virtual environments
 myenv/
 venv/
 env/
@@ -7,49 +7,27 @@ ENV/
 # Python cache
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
 
-# IDE and Editor
+# Editor / OS
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
 .DS_Store
 Thumbs.db
 
-# Environment variables
+# Secrets
 .env
 .env.local
 
-# Project specific
-captured_faces/*.jpg
-captured_faces/*.png
-registered_faces/*.jpg
-registered_faces/*.png
+# Project data (student photos and records)
+captured_faces/
+registered_faces/
+students.csv
 attendance.csv
+*.pkl
 
-# Test and temporary files
+# Local tests, logs, temp
+test_atlas.py
 test/diagram.html
 *.log
 *.tmp
-
-# OS files
-.gitkeep

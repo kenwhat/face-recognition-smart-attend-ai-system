@@ -16,8 +16,16 @@ from test_face_recognition import Config
 
 app = Flask(__name__)
 STUDENTS = "students.csv"
-lock = threading.Lock()          # recognize_face uses one temp file, so one scan at a time
+lock = threading.Lock()          # guards the recognizer (its cascade + temp file): one scan at a time
 Config.VOICE_ENABLED = False     # pyttsx3 can freeze web requests; set True to try it
+
+# FIX for "cv2.error: invalid vector subscript":
+# an OpenCV CascadeClassifier is NOT thread-safe, and /api/detect and /api/recognize
+# run at the same time. So /api/detect gets its OWN cascade with its OWN lock, and the
+# recognizer's cascade is only ever touched while holding `lock`.
+detect_cascade = cv2.CascadeClassifier(
+    cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+detect_lock = threading.Lock()
 
 
 class AsyncTelegram:
@@ -118,7 +126,10 @@ def train():
 def detect():
     """Fast face finder (no recognition) so the page can draw a live face box."""
     frame = decode(request.json["image"])
-    boxes = sorted(([int(x), int(y), int(w), int(h)] for x, y, w, h in recognizer.detect_faces(frame)),
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    with detect_lock:  # separate cascade + lock, never shared with the recognizer
+        found = detect_cascade.detectMultiScale(gray, 1.3, 5)
+    boxes = sorted(([int(x), int(y), int(w), int(h)] for x, y, w, h in found),
                    key=lambda b: -b[2] * b[3])
     return jsonify(boxes=boxes, size=[frame.shape[1], frame.shape[0]])
 
@@ -126,11 +137,11 @@ def detect():
 @app.post("/api/recognize")
 def recognize():
     frame = decode(request.json["image"])
-    faces = recognizer.detect_faces(frame)
-    if len(faces) == 0:
-        return jsonify(found=False, face=False)
-    x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
-    with lock:
+    with lock:  # detect_faces + recognize_face both use the recognizer's cascade
+        faces = recognizer.detect_faces(frame)
+        if len(faces) == 0:
+            return jsonify(found=False, face=False)
+        x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
         name, conf, emotion = recognizer.recognize_face(frame)
         if not name:
             return jsonify(found=False, face=True)
